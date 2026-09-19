@@ -2,7 +2,7 @@
 
 ## 概要
 - 本体: claude_hotkey.ahk / 設定: claude_hotkey.ini(初回起動時に自動生成)
-- 操作ログ: lib/log.ahk(本体が #Include)/ 仕様: docs/logging.md / 解析: analysis/analyze.py
+- 操作ログ: lib/log.ahk(本体が #Include)/ 仕様: docs/logging.md / 解析: analysis/analyze.py(Docker で実行: analysis/analyze.ps1 + Dockerfile)
 - 最近使ったファイル: lib/recent.ahk(本体が #Include)+ lib/fr.ps1 / 仕様: docs/recent_files.md
 - 仕様・設計・テスト手順: docs/claude_hotkey_handoff.md(第4〜10章)
 - 機能: 呼び出し / レイアウト / 自動配置 / スナップ / 集中モード / 操作ログ(既定は無効)/ 最近使ったファイル
@@ -36,4 +36,5 @@
   - 0 なら問題なし。エラー時は行番号と内容が表示される
   - 警告も見るときは、先頭に #Warn All, StdOut を一時的に足して実行する
 - 変更後は docs/claude_hotkey_handoff.md 第8章のチェックリストで動作確認する
-- 解析スクリプトを変えたら python analysis/test_analyze.py を実行する
+- 解析スクリプトを変えたら python analysis/test_analyze.py を実行する(Docker なら analysis\analyze.ps1 -Test)
+- 解析は標準ライブラリだけで書く(利用者に Python を入れさせない方針。イメージも python:3.12-slim のまま増やさない)

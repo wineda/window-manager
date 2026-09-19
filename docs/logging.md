@@ -1,6 +1,6 @@
 # 操作ログの仕様(`lib/log.ahk`)
 
-ウィンドウの操作を CSV に記録し、`docs/claude_hotkey_handoff.md` 第7章の λ・W・d・r・p・k を実測するための仕様です。実装は `lib/log.ahk`、解析は `analysis/analyze.py`。
+ウィンドウの操作を CSV に記録し、`docs/claude_hotkey_handoff.md` 第7章の λ・W・d・r・p・k を実測するための仕様です。実装は `lib/log.ahk`、解析は `analysis/analyze.py`(Windows では Python を入れずに `analysis/analyze.ps1` が Docker で実行する)。
 
 | 項目 | 内容 |
 |---|---|
@@ -125,6 +125,16 @@
 | 機能の効果 | `tool` 行の `action` / `result` 別回数。`show` で `minimized` の回数(W の短縮)。自動配置の有効・無効での d の差 |
 
 最小化中の時間は d・r の分母に入れない。小さなユーティリティ窓(幅か高さが作業領域の 40% 未満)を d・r から除くかは解析時に決める。`analysis/analyze.py` が上記をすべて計算する。
+
+実行方法(Docker Desktop が必要、Python は不要):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File analysis\analyze.ps1            # 既定のログフォルダ
+powershell -ExecutionPolicy Bypass -File analysis\analyze.ps1 -LogDir D:\logs --min-life 5
+powershell -ExecutionPolicy Bypass -File analysis\analyze.ps1 -Test      # 合成ログで検算
+```
+
+ログフォルダは読み取り専用でコンテナの `/logs` にマウントされる。イメージは `python:3.12-slim` に `analyze.py` と `test_analyze.py` を入れただけで、追加のパッケージはない。
 
 ## 9. 実装メモ
 

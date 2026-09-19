@@ -3,6 +3,7 @@
 
 使い方:
     python analyze.py <CSV ファイルまたはフォルダ>...  [--min-life 秒] [--cluster px]
+    Docker(Python 不要): analysis\analyze.ps1(Windows)/ Dockerfile を参照
 
 標準ライブラリだけで動く。CSV は UTF-8(BOM付き)、列は docs/logging.md 第4章。
 """
