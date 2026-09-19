@@ -38,6 +38,8 @@ PC 起動時に自動で動かすには、`Win + R` →「`shell:startup`」で�
 | `docs/logging.md` | 操作ログの仕様(列・イベント・解析方法) | UTF-8 |
 | `docs/recent_files.md` | 最近使ったファイルの仕様 | UTF-8 |
 | `analysis/analyze.py` | 操作ログの解析(標準ライブラリのみ) | UTF-8 |
+| `analysis/analyze.ps1` | 解析を Docker で実行するラッパー(Windows) | UTF-8(BOM付き)・CRLF |
+| `analysis/Dockerfile` | 解析用イメージ(`python:3.12-slim` + 上の2スクリプト) | UTF-8 |
 | `CLAUDE.md` | Claude Code 向けの開発ルール | UTF-8 |
 
 `claude_hotkey.ini` はリポジトリに含めていません(初回起動時に生成されるため)。`.gitattributes` で
@@ -50,10 +52,20 @@ UTF-16 LE として扱う設定を入れてあるので、コミットすれば�
 
 1. `claude_hotkey.ini` の `[General]` に `Log=1` を書いて再読み込みする
 2. `%LOCALAPPDATA%\claude_hotkey\logs\YYYY-MM-DD.csv` に1日1ファイルで記録される(トレイメニュー「ログフォルダを開く」)
-3. 解析する:
+3. 解析する(Docker Desktop が必要。Python のインストールは不要):
 
    ```powershell
-   python analysis\analyze.py "$env:LOCALAPPDATA\claude_hotkey\logs"
+   powershell -ExecutionPolicy Bypass -File analysis\analyze.ps1
+   ```
+
+   初回だけ解析用のイメージを作ります(数十秒)。別のフォルダや `analyze.py` のオプションも渡せます:
+   `analysis\analyze.ps1 -LogDir D:\logs --min-life 5`
+
+   Docker を直接使う場合(Windows 以外も同じ):
+
+   ```sh
+   docker build -t claude-hotkey-analyze analysis
+   docker run --rm -v "<ログフォルダ>:/logs:ro" claude-hotkey-analyze
    ```
 
 ウィンドウのタイトルは既定では記録しません。列の意味と解析方法は [`docs/logging.md`](docs/logging.md) を参照してください。
@@ -81,8 +93,10 @@ $ahk = "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"   # インストール�
 
 変更後は、同資料 第8.4節の実機チェックリストで動作を確認してください。
 
-解析スクリプトのテスト(合成ログで手計算した値と照合):
+解析スクリプトのテスト(合成ログで手計算した値と照合)。Docker で:
 
 ```powershell
-python analysis\test_analyze.py
+powershell -ExecutionPolicy Bypass -File analysis\analyze.ps1 -Test
 ```
+
+Python がある環境なら `python analysis\test_analyze.py` でも同じです。
