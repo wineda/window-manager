@@ -1,6 +1,7 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
 #Include %A_ScriptDir%\lib\log.ahk
+#Include %A_ScriptDir%\lib\recent.ahk
 
 ; ==============================================================
 ;  ウィンドウ整理ツール
@@ -10,6 +11,7 @@
 ;    スナップ   … 今のウィンドウをキー操作で分割配置
 ;    集中モード … 今のウィンドウ以外を最小化(もう一度押すと復元)
 ;    操作ログ   … ウィンドウの操作を CSV に記録(lib\log.ahk、既定は無効)
+;    最近使ったファイル … fzf であいまい検索して開く(lib\recent.ahk + lib\fr.ps1)
 ;  設定: 同じフォルダの claude_hotkey.ini
 ; ==============================================================
 
@@ -17,7 +19,7 @@ INI := A_ScriptDir "\claude_hotkey.ini"
 if !FileExist(INI)
     CreateDefaultIni(INI)
 
-Cfg        := {Gap: 0, AutoLayout: ""}
+Cfg        := {Gap: 0, AutoLayout: "", RecentSize: "110,30", RecentShell: "pwsh"}
 SnapList   := []          ; スナップの一覧(表示用・ファイルの順番)
 SnapMap    := NewMap()    ; キー → 位置
 AutoApps   := NewMap()    ; 自動配置: 実行ファイル名 → 位置
@@ -53,6 +55,7 @@ LoadAll(path) {
     Reg(IniRead(path, "General", "Reload", ""), (*) => Reload(), "設定の再読み込み")
     Reg(IniRead(path, "General", "Focus", ""), ToggleFocus, "集中モード")
     Reg(IniRead(path, "General", "Snap", ""), SnapMenu, "スナップ")
+    RecentLoad(path)                                    ; 最近使ったファイル(lib\recent.ahk)
 
     ; ---- スナップの位置 ----
     for pair in ReadSection(path, "Snap") {
@@ -643,6 +646,14 @@ SnapshotMinutes=5
 IdleMinutes=5
 ; 区画に合っているとみなす許容のずれ(px)
 ZoneTolerance=8
+
+; ---- 最近使ったファイル(仕様: docs/recent_files.md)----
+; Windows の「最近使った項目」を fzf であいまい検索して開く(Windows Terminal と fzf が必要)
+Recent=^!o
+; ターミナルの大きさ(列数,行数)
+RecentSize=110,30
+; 使うシェル pwsh(PowerShell 7)または powershell(Windows PowerShell 5.1)
+RecentShell=pwsh
 
 ; ---- スナップの位置(キー=位置)----
 ; テンキーと同じ並び + Q/W/E で3分割、A/S/D で 左2/3・全体・右2/3

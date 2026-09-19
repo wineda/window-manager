@@ -58,9 +58,9 @@
 | `x`,`y`,`w`,`h` | 整数 | `VisibleRect()` の見た目の矩形(物理px)。`state=min` の間は最小化直前の値を保持 |
 | `zone` | 文字列 | 区画判定の結果(第6章)。空=どの区画にも合っていない |
 | `cause` | 列挙 | `user` / `tool` / `app`(第6章) |
-| `action` | 列挙 | ツールの操作:`show` / `layout` / `autoplace` / `snap` / `focus` |
+| `action` | 列挙 | ツールの操作:`show` / `layout` / `autoplace` / `snap` / `focus` / `recent` |
 | `target` | 文字列 | 操作の対象:呼び出し設定名、レイアウト名、スナップの位置、`minimize` / `restore` |
-| `result` | 列挙 | `moved` / `minimized` / `restored` / `launched` / `none` / `error` |
+| `result` | 列挙 | `moved` / `minimized` / `restored` / `launched` / `activated` / `none` / `error` |
 | `detail` | 文字列 | `key=value;key=value` の予備欄 |
 | `title` | 文字列 | `LogTitle` が `0` なら常に空 |
 

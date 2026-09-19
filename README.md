@@ -10,6 +10,7 @@
 | スナップ | `Ctrl+Alt+G` → 位置キー | アクティブウィンドウを分割位置に置く。Windows 標準にない3分割も可 |
 | 集中モード | `Ctrl+Alt+F` | アクティブ以外を最小化。もう一度押すと復元 |
 | 操作ログ | なし(設定で有効化) | ウィンドウの操作を CSV に記録し、散らかり方を実測する(既定は無効) |
+| 最近使ったファイル | `Ctrl+Alt+O` | Windows の「最近使った項目」を fzf であいまい検索して開く |
 
 ## 動作環境
 
@@ -30,9 +31,12 @@ PC 起動時に自動で動かすには、`Win + R` →「`shell:startup`」で�
 |---|---|---|
 | `claude_hotkey.ahk` | 本体 | UTF-8(BOM なし)・CRLF |
 | `lib/log.ahk` | 操作ログのモジュール(本体が `#Include`) | UTF-8(BOM なし)・CRLF |
+| `lib/recent.ahk` | 最近使ったファイルのモジュール(本体が `#Include`) | UTF-8(BOM なし)・CRLF |
+| `lib/fr.ps1` | 最近使ったファイルの検索・起動(PowerShell) | UTF-8(BOM付き)・CRLF |
 | `claude_hotkey.ini` | 設定。無ければ初回起動時に自動生成 | UTF-16 LE(BOM付き)・CRLF |
 | `docs/claude_hotkey_handoff.md` | 仕様・設計・テスト手順の全文 | UTF-8 |
 | `docs/logging.md` | 操作ログの仕様(列・イベント・解析方法) | UTF-8 |
+| `docs/recent_files.md` | 最近使ったファイルの仕様 | UTF-8 |
 | `analysis/analyze.py` | 操作ログの解析(標準ライブラリのみ) | UTF-8 |
 | `CLAUDE.md` | Claude Code 向けの開発ルール | UTF-8 |
 
@@ -54,6 +58,13 @@ UTF-16 LE として扱う設定を入れてあるので、コミットすれば�
 
 ウィンドウのタイトルは既定では記録しません。列の意味と解析方法は [`docs/logging.md`](docs/logging.md) を参照してください。
 サンプルは `analysis/sample/` にあります。
+
+## 最近使ったファイル
+
+`Ctrl+Alt+O` で Windows Terminal が開き、Windows の「最近使った項目」を fzf であいまい検索できます。Enter で既定のアプリで開き、Esc で閉じます。
+
+必要なもの(いずれも `winget install` で入ります):fzf(`junegunn.fzf`)、PowerShell 7(`Microsoft.PowerShell`)、Windows Terminal(11 は標準搭載)。
+キーや大きさは `[General]` の `Recent` / `RecentSize` / `RecentShell` で変えられます。詳しくは [`docs/recent_files.md`](docs/recent_files.md)。
 
 ## 開発
 

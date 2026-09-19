@@ -10,6 +10,9 @@ claude_hotkey.ini text working-tree-encoding=UTF-16LE-BOM eol=crlf
 # 操作ログのサンプル(docs/logging.md: CRLF)
 *.csv text eol=crlf
 
+# PowerShell: UTF-8(BOM付き)・CRLF。BOM はファイルの中身として保持される
+*.ps1 text eol=crlf
+
 # 資料・スクリプト
 *.md text eol=lf
 *.py text eol=lf
