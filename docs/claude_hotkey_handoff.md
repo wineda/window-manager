@@ -432,6 +432,9 @@ echo "exit code: ${PIPESTATUS[0]}"
 
 ## 付録A:`claude_hotkey.ahk` 全文
 
+> **注意**: この付録は 2026-09-19 にリポジトリへ移した時点の写しです。以後は更新しません。
+> 現在のソースは `claude_hotkey.ahk`(操作ログの組み込みで変更済み)と `lib/log.ahk` を参照してください。
+
 ```autohotkey
 #Requires AutoHotkey v2.0
 #SingleInstance Force
