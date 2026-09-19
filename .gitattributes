@@ -1,0 +1,11 @@
+# ウィンドウ整理ツール(第3章「ファイル構成」に対応)
+
+# 本体: UTF-8(BOM なし)・CRLF
+claude_hotkey.ahk text eol=crlf
+
+# 設定: 作業ツリーは UTF-16 LE(BOM付き)・CRLF。
+# リポジトリ内では UTF-8 として持つため、INI の差分をテキストで確認できる。
+claude_hotkey.ini text working-tree-encoding=UTF-16LE-BOM eol=crlf
+
+# 資料
+*.md text eol=lf
