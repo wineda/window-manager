@@ -199,6 +199,8 @@ Claude Code はプロジェクト直下の `CLAUDE.md` をセッション開始�
 | `Snap` | 無効 | `^!g` | スナップを始めるキー |
 | `AutoLayout` | 無効 | `作業` | 自動配置に使うレイアウト名 |
 | `Gap` | `0` | `0` | ウィンドウ同士の隙間(px)。画面の端は半分。偶数を推奨(奇数は切り捨て) |
+| `Log` ほか `Log*`、`SnapshotMinutes`、`IdleMinutes`、`ZoneTolerance` | 無効 | `Log=0` | 操作ログ(後から追加)。`docs/logging.md` 第2章 |
+| `Recent`、`RecentSize`、`RecentShell` | 無効 | `^!o` | 最近使ったファイル(後から追加)。`docs/recent_files.md` 第3章 |
 
 ### 5.3 `[Snap]`
 
@@ -431,6 +433,9 @@ echo "exit code: ${PIPESTATUS[0]}"
 ---
 
 ## 付録A:`claude_hotkey.ahk` 全文
+
+> **注意**: この付録は 2026-09-19 にリポジトリへ移した時点の写しです。以後は更新しません。
+> 現在のソースは `claude_hotkey.ahk`(操作ログの組み込みで変更済み)と `lib/log.ahk` を参照してください。
 
 ```autohotkey
 #Requires AutoHotkey v2.0

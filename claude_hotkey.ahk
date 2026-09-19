@@ -1,5 +1,7 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
+#Include %A_ScriptDir%\lib\log.ahk
+#Include %A_ScriptDir%\lib\recent.ahk
 
 ; ==============================================================
 ;  ウィンドウ整理ツール
@@ -8,6 +10,8 @@
 ;    自動配置   … アプリを起動したら定位置へ
 ;    スナップ   … 今のウィンドウをキー操作で分割配置
 ;    集中モード … 今のウィンドウ以外を最小化(もう一度押すと復元)
+;    操作ログ   … ウィンドウの操作を CSV に記録(lib\log.ahk、既定は無効)
+;    最近使ったファイル … fzf であいまい検索して開く(lib\recent.ahk + lib\fr.ps1)
 ;  設定: 同じフォルダの claude_hotkey.ini
 ; ==============================================================
 
@@ -15,7 +19,7 @@ INI := A_ScriptDir "\claude_hotkey.ini"
 if !FileExist(INI)
     CreateDefaultIni(INI)
 
-Cfg        := {Gap: 0}
+Cfg        := {Gap: 0, AutoLayout: "", RecentSize: "110,30", RecentShell: "pwsh"}
 SnapList   := []          ; スナップの一覧(表示用・ファイルの順番)
 SnapMap    := NewMap()    ; キー → 位置
 AutoApps   := NewMap()    ; 自動配置: 実行ファイル名 → 位置
@@ -31,6 +35,8 @@ A_TrayMenu.Add()
 A_TrayMenu.Add("登録キーの一覧", ShowKeyList)
 A_TrayMenu.Add("設定ファイルを開く", (*) => Run('notepad.exe "' INI '"'))
 A_TrayMenu.Add("設定を再読み込み", (*) => Reload())
+
+LogInit(INI)                  ; 操作ログ(Log=1 のときだけ動く)
 
 if Errors.Length {
     msg := ""
@@ -49,6 +55,7 @@ LoadAll(path) {
     Reg(IniRead(path, "General", "Reload", ""), (*) => Reload(), "設定の再読み込み")
     Reg(IniRead(path, "General", "Focus", ""), ToggleFocus, "集中モード")
     Reg(IniRead(path, "General", "Snap", ""), SnapMenu, "スナップ")
+    RecentLoad(path)                                    ; 最近使ったファイル(lib\recent.ahk)
 
     ; ---- スナップの位置 ----
     for pair in ReadSection(path, "Snap") {
@@ -78,14 +85,17 @@ LoadAll(path) {
 
     ; ---- 自動配置 ----
     auto := Clean(IniRead(path, "General", "AutoLayout", ""))
-    if (auto = "")
-        return
-    if !layouts.Has(auto) {
-        Errors.Push("[General] AutoLayout のレイアウト「" auto "」が見つかりません")
-        return
+    if (auto != "") {
+        if !layouts.Has(auto)
+            Errors.Push("[General] AutoLayout のレイアウト「" auto "」が見つかりません")
+        else {
+            Cfg.AutoLayout := auto
+            for proc, zone in layouts[auto].Apps
+                AutoApps[proc] := zone
+        }
     }
-    for proc, zone in layouts[auto].Apps
-        AutoApps[proc] := zone
+
+    ; ウィンドウの生成・切り替えの通知(自動配置と操作ログが使う)
     DllCall("RegisterShellHookWindow", "Ptr", A_ScriptHwnd)
     OnMessage(DllCall("RegisterWindowMessage", "Str", "SHELLHOOK", "UInt"), OnShellMsg)
 }
@@ -165,11 +175,13 @@ CheckZone(spec, label) {
 ; ==============================================================
 ShowWindow(p, *) {
     SetDpi()
+    launched := false
     hwnd := FindAppWindow(p.Process)
     if !hwnd {
         Launching[p.Process] := A_TickCount
         try Run(p.Path)
         catch {
+            LogTool("show", p.Name, "error")
             MsgBox("[" p.Name "] 起動できません。Path を確認してください。`n`n" p.Path)
             return
         }
@@ -178,9 +190,12 @@ ShowWindow(p, *) {
             if (hwnd := FindAppWindow(p.Process))
                 break
         }
-        if !hwnd
+        if !hwnd {
+            LogTool("show", p.Name, "none")
             return
+        }
         Sleep(300)
+        launched := true
     }
 
     MonitorGetWorkArea(MouseMonitor(), &l, &t, &r, &b)
@@ -193,10 +208,14 @@ ShowWindow(p, *) {
     if (p.Toggle && WinActive(hwnd) && WinGetMinMax(hwnd) = 0) {
         v := VisibleRect(hwnd)
         if (Abs(v.x - x) <= 2 && Abs(v.y - y) <= 2 && Abs(v.w - w) <= 2 && Abs(v.h - h) <= 2) {
+            LogMark(hwnd, "show", p.Name)
+            LogTool("show", p.Name, "minimized", hwnd)
             WinMinimize(hwnd)
             return
         }
     }
+    LogMark(hwnd, "show", p.Name)
+    LogTool("show", p.Name, launched ? "launched" : "moved", hwnd)
     RestoreIfNeeded(hwnd)
     MoveExact(hwnd, x, y, w, h)
     WinActivate(hwnd)
@@ -215,14 +234,17 @@ ApplyLayout(L, *) {
         for hwnd in WinGetList("ahk_exe " proc) {
             if !IsAppWindow(hwnd)
                 continue
+            LogMark(hwnd, "layout", L.Name)
             PlaceInZone(hwnd, zone, mon)
             placed.Push(hwnd)
         }
     }
     if !placed.Length {
+        LogTool("layout", L.Name, "none")
         ShowTip("レイアウト「" L.Name "」: 対象のウィンドウが開いていません")
         return
     }
+    LogTool("layout", L.Name, "moved", 0, "count=" placed.Length)
     target := placed[1]
     for hwnd in placed {
         try WinMoveTop(hwnd)
@@ -238,8 +260,10 @@ ApplyLayout(L, *) {
 ;  (ポップアップなど2つ目以降のウィンドウは動かさない)
 ; ==============================================================
 OnShellMsg(wParam, lParam, *) {
-    if (wParam = 1)                        ; HSHELL_WINDOWCREATED
+    code := wParam & 0x7FFF                ; HSHELL_RUDEAPPACTIVATED(0x8004)を 4 に
+    if (code = 1 && AutoApps.Count)        ; HSHELL_WINDOWCREATED
         SetTimer(AutoPlace.Bind(lParam), -600)
+    LogShell(code, lParam)
 }
 
 AutoPlace(hwnd) {
@@ -256,7 +280,9 @@ AutoPlace(hwnd) {
         for other in WinGetList("ahk_exe " proc)
             if (other != hwnd && IsAppWindow(other))
                 return
+        LogMark(hwnd, "autoplace", Cfg.AutoLayout)
         PlaceInZone(hwnd, AutoApps[proc], MouseMonitor())
+        LogTool("autoplace", Cfg.AutoLayout, "moved", hwnd)
     }
 }
 
@@ -280,11 +306,17 @@ SnapMenu(*) {
     ih.Start()
     ih.Wait()
     ToolTip()
-    if (ih.EndReason != "EndKey")
+    if (ih.EndReason != "EndKey") {
+        LogTool("snap", "", "none", hwnd)
         return
+    }
     k := NormalizeKey(ih.EndKey)
-    if !SnapMap.Has(k)
+    if !SnapMap.Has(k) {
+        LogTool("snap", k, "none", hwnd)
         return
+    }
+    LogMark(hwnd, "snap", SnapMap[k])
+    LogTool("snap", SnapMap[k], "moved", hwnd)
     PlaceInZone(hwnd, SnapMap[k], mon)
     WinActivate(hwnd)
 }
@@ -322,9 +354,13 @@ ToggleFocus(*) {
     active := WinExist("A")
     if stillMin.Length {
         ; 奥にあったものから順に戻して重なり順を保つ
-        Loop stillMin.Length
-            try WinRestore(stillMin[stillMin.Length - A_Index + 1])
+        Loop stillMin.Length {
+            h := stillMin[stillMin.Length - A_Index + 1]
+            LogMark(h, "focus", "restore")
+            try WinRestore(h)
+        }
         try WinActivate(active)
+        LogTool("focus", "restore", "restored", active, "count=" stillMin.Length)
         ShowTip("元に戻しました")
         return
     }
@@ -334,17 +370,20 @@ ToggleFocus(*) {
         try {
             if WinGetMinMax(hwnd) = -1
                 continue
+            LogMark(hwnd, "focus", "minimize")
             WinMinimize(hwnd)
             FocusStash.Push(hwnd)
         }
     }
+    LogTool("focus", "minimize", "minimized", active, "count=" FocusStash.Length)
     ShowTip("集中モード(もう一度押すと元に戻します)")
 }
 
 ; ==============================================================
 ;  位置の計算と移動
 ; ==============================================================
-ParseZone(spec) {
+; 名前付きの区画(x, y, 幅, 高さ の割合)。操作ログの区画判定でも使う
+ZoneTable() {
     static Z := Map(
         "全体",   [0, 0, 1, 1],
         "中央",   [0.15, 0.1, 0.7, 0.8],
@@ -355,6 +394,11 @@ ParseZone(spec) {
         "左上",   [0, 0, 0.5, 0.5],   "右上",   [0.5, 0, 0.5, 0.5],
         "左下",   [0, 0.5, 0.5, 0.5], "右下",   [0.5, 0.5, 0.5, 0.5]
     )
+    return Z
+}
+
+ParseZone(spec) {
+    Z := ZoneTable()
     s := ToHalf(Trim(spec))
     mon := 0
     if RegExMatch(s, "@\s*(\d+)$", &m) {
@@ -380,14 +424,21 @@ ParseZone(spec) {
 PlaceInZone(hwnd, spec, defMon) {
     z := ParseZone(spec)
     mon := (z.mon >= 1 && z.mon <= MonitorGetCount()) ? z.mon : defMon
+    e := ZoneRect(z, mon)
+    RestoreIfNeeded(hwnd)
+    MoveExact(hwnd, e.x, e.y, e.w, e.h)
+}
+
+; 区画 {x, y, w, h}(割合)→ モニターの作業領域上の矩形(px、Gap を反映)
+; 左端と右端をそれぞれ丸めてから幅を出すので、隣の区画との間に隙間や重なりができない
+ZoneRect(z, mon) {
     MonitorGetWorkArea(mon, &l, &t, &r, &b)
     g := Cfg.Gap // 2
     x1 := Round(l + (r - l) * z.x) + g
     y1 := Round(t + (b - t) * z.y) + g
     x2 := Round(l + (r - l) * (z.x + z.w)) - g
     y2 := Round(t + (b - t) * (z.y + z.h)) - g
-    RestoreIfNeeded(hwnd)
-    MoveExact(hwnd, x1, y1, x2 - x1, y2 - y1)
+    return {x: x1, y: y1, w: x2 - x1, h: y2 - y1}
 }
 
 ; "1200" → 1200px、"70%" → 作業領域の70%
@@ -577,6 +628,32 @@ Snap=^!g
 AutoLayout=作業
 ; ウィンドウ同士の隙間(px)
 Gap=0
+
+; ---- 操作ログ(仕様: docs/logging.md)----
+; 1 にすると、ウィンドウの操作を CSV に記録します(既定は記録しない)
+Log=0
+; 保存先(空欄なら %LOCALAPPDATA%\claude_hotkey\logs)
+LogDir=
+; ウィンドウのタイトル 0=記録しない 1=記録する hash=ハッシュ値だけ
+LogTitle=0
+; 記録しないアプリ(実行ファイル名をカンマ区切り)
+LogExclude=
+; ログを残す日数(0 で無期限)
+LogKeepDays=90
+; 開いている全ウィンドウを記録する間隔(分)
+SnapshotMinutes=5
+; この分数だけ操作がなければ離席とみなす
+IdleMinutes=5
+; 区画に合っているとみなす許容のずれ(px)
+ZoneTolerance=8
+
+; ---- 最近使ったファイル(仕様: docs/recent_files.md)----
+; Windows の「最近使った項目」を fzf であいまい検索して開く(Windows Terminal と fzf が必要)
+Recent=^!o
+; ターミナルの大きさ(列数,行数)
+RecentSize=110,30
+; 使うシェル pwsh(PowerShell 7)または powershell(Windows PowerShell 5.1)
+RecentShell=pwsh
 
 ; ---- スナップの位置(キー=位置)----
 ; テンキーと同じ並び + Q/W/E で3分割、A/S/D で 左2/3・全体・右2/3
