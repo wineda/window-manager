@@ -33,6 +33,7 @@ PC 起動時に自動で動かすには、`Win + R` →「`shell:startup`」で�
 | `lib/log.ahk` | 操作ログのモジュール(本体が `#Include`) | UTF-8(BOM なし)・CRLF |
 | `lib/recent.ahk` | 最近使ったファイルのモジュール(本体が `#Include`) | UTF-8(BOM なし)・CRLF |
 | `lib/fr.ps1` | 最近使ったファイルの検索・起動(PowerShell) | UTF-8(BOM付き)・CRLF |
+| `tests/fr.tests.ps1` | `fr.ps1` の表示整形のテスト | UTF-8(BOM付き)・CRLF |
 | `claude_hotkey.ini` | 設定。無ければ初回起動時に自動生成 | UTF-16 LE(BOM付き)・CRLF |
 | `docs/claude_hotkey_handoff.md` | 仕様・設計・テスト手順の全文 | UTF-8 |
 | `docs/logging.md` | 操作ログの仕様(列・イベント・解析方法) | UTF-8 |
@@ -74,6 +75,7 @@ UTF-16 LE として扱う設定を入れてあるので、コミットすれば�
 ## 最近使ったファイル
 
 `Ctrl+Alt+O` で Windows Terminal が開き、Windows の「最近使った項目」を fzf であいまい検索できます。Enter で既定のアプリで開き、Esc で閉じます。
+一覧は「ファイル名  更新日時  フォルダ」の列で、パスが長くてもファイル名が左にそろいます。検索は見えている部分だけに当たります。
 
 必要なもの(いずれも `winget install` で入ります):fzf(`junegunn.fzf`)、PowerShell 7(`Microsoft.PowerShell`)、Windows Terminal(11 は標準搭載)。
 キーや大きさは `[General]` の `Recent` / `RecentSize` / `RecentShell` で変えられます。詳しくは [`docs/recent_files.md`](docs/recent_files.md)。
@@ -100,3 +102,9 @@ powershell -ExecutionPolicy Bypass -File analysis\analyze.ps1 -Test
 ```
 
 Python がある環境なら `python analysis\test_analyze.py` でも同じです。
+
+最近使ったファイルの表示整形のテスト(全角の幅、省略、フォルダの短縮):
+
+```powershell
+pwsh -File tests\fr.tests.ps1
+```
