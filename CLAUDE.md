@@ -22,6 +22,7 @@
 - ログの列(docs/logging.md 第4章)は末尾にしか追加しない。追加したら schema の版を上げ、仕様書と analysis/analyze.py も直す
 - #Include は %A_ScriptDir% 基準で書く(作業ディレクトリに依存しないため)
 - lib/fr.ps1 は UTF-8(BOM付き)・CRLF(Windows PowerShell 5.1 が BOM なし UTF-8 を ANSI として読むため)
+  - 関数定義の後の `if ($MyInvocation.InvocationName -eq '.') { return }` より下が本体。テストは dot-source で関数だけを読み込むので、fzf の起動などはその下に書く
 - 新しい機能の設定キーは [General] に置く(新しいセクションは呼び出し設定と誤認されるため)
 
 ## AutoHotkey v2 の注意
@@ -37,4 +38,5 @@
   - 警告も見るときは、先頭に #Warn All, StdOut を一時的に足して実行する
 - 変更後は docs/claude_hotkey_handoff.md 第8章のチェックリストで動作確認する
 - 解析スクリプトを変えたら python analysis/test_analyze.py を実行する(Docker なら analysis\analyze.ps1 -Test)
+- lib/fr.ps1 の表示整形を変えたら pwsh -File tests\fr.tests.ps1 を実行する
 - 解析は標準ライブラリだけで書く(利用者に Python を入れさせない方針。イメージも python:3.12-slim のまま増やさない)
